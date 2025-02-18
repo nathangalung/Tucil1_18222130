@@ -1,8 +1,8 @@
-AAABC
-BBCCD
-DDEEE
-EEFFF
-FFGGG
+AGGGC
+AABCC
+EEBBF
+EEDFF
+EDDFF
 
-Waktu pencarian: 2 ms
-Banyak kasus yang ditinjau: 16
+Waktu pencarian: 75 ms
+Banyak kasus yang ditinjau: 27024

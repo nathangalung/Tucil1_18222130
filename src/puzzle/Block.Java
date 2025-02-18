@@ -9,17 +9,11 @@ public class Block {
 
     public Block(String pattern) {
         this.coordinates = new ArrayList<>();
-        String[] lines = pattern.split("\n");
-        this.id = pattern.charAt(0);
-
-        int height = lines.length;
-        int width = 0;
-        for (String line : lines) {
-            width = Math.max(width, line.length());
-        }
-
-        // Store coordinates of the block shape (connected cells of the same character)
-        for (int i = 0; i < height; i++) {
+        String[] lines = pattern.trim().split("\n");
+        this.id = lines[0].charAt(0);
+        
+        // Store coordinates for each character in the pattern
+        for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             for (int j = 0; j < line.length(); j++) {
                 if (line.charAt(j) == id) {
