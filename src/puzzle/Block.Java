@@ -6,13 +6,23 @@ import java.util.List;
 public class Block {
     private char id;
     private List<int[]> coordinates;
+    private String puzzleType;
 
-    public Block(String pattern) {
+    public Block(String pattern, String puzzleType) {
         this.coordinates = new ArrayList<>();
+        this.puzzleType = puzzleType;
         String[] lines = pattern.trim().split("\n");
-        this.id = lines[0].charAt(0);
         
-        // Store coordinates for each character in the pattern
+        // Find first non-space character as ID
+        for (int i = 0; i < lines[0].length(); i++) {
+            char c = lines[0].charAt(i);
+            if (c != ' ') {
+                this.id = c;
+                break;
+            }
+        }
+        
+        // Store coordinates for each character in the pattern, ignoring spaces
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             for (int j = 0; j < line.length(); j++) {
@@ -24,8 +34,18 @@ public class Block {
         normalizeCoordinates();
     }
 
+    // Update copy() method to include puzzleType
+    public Block copy() {
+        Block newBlock = new Block(String.valueOf(id), puzzleType);
+        newBlock.coordinates = new ArrayList<>();
+        for (int[] coord : coordinates) {
+            newBlock.coordinates.add(new int[]{coord[0], coord[1]});
+        }
+        return newBlock;
+    }
+
+    // Rest of the methods remain the same
     public void rotate90() {
-        // Rotate coordinates 90 degrees clockwise
         for (int[] coord : coordinates) {
             int temp = coord[0];
             coord[0] = coord[1];
@@ -34,16 +54,31 @@ public class Block {
         normalizeCoordinates();
     }
 
+    public void rotate3D() {
+        for (int[] coord : coordinates) {
+            // For 3D rotation in 2D space, we'll just do a special rotation
+            int temp = coord[0];
+            coord[0] = -coord[1];
+            coord[1] = temp;
+        }
+        normalizeCoordinates();
+    }
+
     public void flipHorizontal() {
-        // Flip horizontally (reflect across the vertical axis)
         for (int[] coord : coordinates) {
             coord[1] = -coord[1];
         }
         normalizeCoordinates();
     }
 
+    public void flipVertical() {
+        for (int[] coord : coordinates) {
+            coord[0] = -coord[0];
+        }
+        normalizeCoordinates();
+    }
+
     private void normalizeCoordinates() {
-        // Normalize coordinates to the smallest top-left corner (0,0)
         int minRow = Integer.MAX_VALUE;
         int minCol = Integer.MAX_VALUE;
 
@@ -52,7 +87,6 @@ public class Block {
             minCol = Math.min(minCol, coord[1]);
         }
 
-        // Adjust all coordinates so that the block's shape is always relative to the smallest corner (0,0)
         for (int[] coord : coordinates) {
             coord[0] -= minRow;
             coord[1] -= minCol;
@@ -65,34 +99,5 @@ public class Block {
 
     public List<int[]> getCoordinates() {
         return coordinates;
-    }
-
-    public Block copy() {
-        Block newBlock = new Block(String.valueOf(id));
-        newBlock.coordinates = new ArrayList<>();
-        for (int[] coord : coordinates) {
-            newBlock.coordinates.add(new int[]{coord[0], coord[1]});
-        }
-        return newBlock;
-    }
-
-    // Convert block coordinates to a grid string for easy visualization
-    public String toGridString(int maxRows, int maxCols) {
-        char[][] grid = new char[maxRows][maxCols];
-        for (int i = 0; i < maxRows; i++) {
-            for (int j = 0; j < maxCols; j++) {
-                grid[i][j] = '.';
-            }
-        }
-
-        for (int[] coord : coordinates) {
-            grid[coord[0]][coord[1]] = id;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < maxRows; i++) {
-            sb.append(new String(grid[i])).append("\n");
-        }
-        return sb.toString();
     }
 }

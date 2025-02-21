@@ -1,8 +1,0 @@
-AGGGC
-AABCC
-EEBBF
-EEDFF
-EDDFF
-
-Waktu pencarian: 75 ms
-Banyak kasus yang ditinjau: 27024
