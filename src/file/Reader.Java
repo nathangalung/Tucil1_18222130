@@ -81,23 +81,14 @@ public class Reader {
         while (scanner.hasNextLine()) {
             line = scanner.nextLine();
             if (!line.isEmpty()) {
-                // Find first non-space character as ID
-                char blockId = ' ';
-                for (char c : line.toCharArray()) {
-                    if (c != ' ') {
-                        blockId = c;
-                        break;
-                    }
-                }
-                
+                char blockId = findBlockId(line);
                 if (currentId == null) {
                     currentId = blockId;
                     currentBlock.append(line).append("\n");
                 } else if (blockId == currentId) {
                     currentBlock.append(line).append("\n");
                 } else {
-                    // New block starts
-                    blocks.add(new Block(currentBlock.toString(), puzzleType));
+                    blocks.add(new Block(currentBlock.toString()));
                     currentBlock = new StringBuilder();
                     currentBlock.append(line).append("\n");
                     currentId = blockId;
@@ -105,12 +96,20 @@ public class Reader {
             }
         }
         
-        // Add the last block
         if (currentBlock.length() > 0) {
-            blocks.add(new Block(currentBlock.toString(), puzzleType));
+            blocks.add(new Block(currentBlock.toString()));
         }
         
         scanner.close();
         return blocks;
+    }
+
+    private char findBlockId(String line) {
+        for (char c : line.toCharArray()) {
+            if (c != ' ') {
+                return c;
+            }
+        }
+        return ' ';
     }
 }

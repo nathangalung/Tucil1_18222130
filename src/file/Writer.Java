@@ -46,24 +46,36 @@ public class Writer {
     public void writeSolution(Board board, long timeMs, long iterations) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
             char[][] grid = board.getGrid();
+            
+            // Write to file
             for (char[] row : grid) {
                 writer.println(new String(row));
             }
             writer.printf("\nWaktu pencarian: %d ms\n", timeMs);
             writer.printf("Banyak kasus yang ditinjau: %d\n", iterations);
+            
+            // Print to console with colors
+            System.out.println("\nSolution:");
+            printColoredSolution(board);
+            System.out.printf("\nWaktu pencarian: %d ms\n", timeMs);
+            System.out.printf("Banyak kasus yang ditinjau: %d\n", iterations);
         }
     }
     
     public static void printColoredSolution(Board board) {
         char[][] grid = board.getGrid();
-        
+        System.out.println(); // Add blank line before solution
         for (char[] row : grid) {
             for (char c : row) {
                 if (c == '.') {
                     System.out.print('.');
                 } else {
                     int colorIndex = c - 'A';
-                    System.out.print(COLORS[colorIndex] + c + RESET);
+                    if (colorIndex >= 0 && colorIndex < COLORS.length) {
+                        System.out.print(COLORS[colorIndex] + c + RESET);
+                    } else {
+                        System.out.print(c);
+                    }
                 }
             }
             System.out.println();

@@ -1,8 +1,8 @@
-package main;  // Add this line at the top
+package main;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.geometry.Pos;  // Add this import
+import javafx.geometry.Pos;
 import javafx.geometry.Insets;
 import javafx.scene.*;
 import javafx.scene.control.*;
@@ -10,62 +10,63 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.*;
-import javafx.scene.transform.Rotate; // Add this import
+import javafx.scene.transform.Rotate;
+import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
-import java.io.File;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ArrayList;
+import javafx.stage.Modality;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.WritableImage;
 import javax.imageio.ImageIO;
+import java.io.File;
+import java.util.*;
 import file.*;
 import puzzle.*;
 
-
 public class Main extends Application {
+    // Constants
     private static final double SPHERE_RADIUS = 20.0;
+    
+    // UI Components
     private Group puzzleGroup;
-    private Label statusLabel;
-    private Label timeLabel;
-    private Label iterationsLabel;
     private TextField fileNameField;
     private ProgressIndicator loadingIndicator;
     private Board currentBoard;
-    private HBox buttonControls;  // Add this field
-    private double mousePosX, mousePosY;
-    private double mouseOldX, mouseOldY;
+    private HBox buttonControls;
+    private Label statusLabel = new Label("Enter a filename to start");
+    private Label timeLabel = new Label();
+    private Label iterationsLabel = new Label();
+    private VBox fileNameContainer;
+    private VBox solutionContainer;
+    private Group solutionFoundGroup;
+
+    // 3D Controls
+    private double mousePosX, mousePosY, mouseOldX, mouseOldY;
     private final Rotate rotateX = new Rotate(0, Rotate.X_AXIS);
     private final Rotate rotateY = new Rotate(0, Rotate.Y_AXIS);
-    private long solveTime;
-    private long iterationCount;
+    private double scaleValue = 1.0;
+    private final Scale scaleTransform = new Scale(1, 1, 1);
+
+    // State tracking
+    private long solveTime, iterationCount, finalIterations;
     private Set<String> addedConnections = new HashSet<>();
 
-    // Colors matching Writer.COLORS
+    // Colors for puzzle pieces
     private static final Color[] PIECE_COLORS = {
-        Color.RED,           // A
-        Color.GREEN,        // B
-        Color.YELLOW,       // C
-        Color.BLUE,         // D
-        Color.PURPLE,       // E
-        Color.CYAN,         // F
-        Color.rgb(255,0,0), // G (Bright Red)
-        Color.rgb(0,255,0), // H (Bright Green)
-        Color.rgb(255,255,0), // I (Bright Yellow)
-        Color.rgb(0,0,255),   // J (Bright Blue)
-        Color.rgb(255,0,255), // K (Bright Magenta)
-        Color.rgb(0,255,255), // L (Bright Cyan)
-        // ... add more colors as needed
+        Color.RED, Color.GREEN, Color.YELLOW, Color.BLUE, Color.PURPLE, Color.CYAN,
+        Color.rgb(255, 50, 50), Color.rgb(50, 255, 50), Color.rgb(255, 255, 50),
+        Color.rgb(50, 50, 255), Color.rgb(255, 50, 255), Color.rgb(50, 255, 255),
+        Color.rgb(180, 0, 0), Color.rgb(0, 180, 0), Color.rgb(180, 180, 0),
+        Color.rgb(0, 0, 180), Color.rgb(180, 0, 180), Color.rgb(0, 180, 180),
+        Color.rgb(255, 100, 100), Color.rgb(100, 255, 100), Color.rgb(255, 255, 100),
+        Color.rgb(100, 100, 255), Color.rgb(255, 100, 255), Color.rgb(100, 255, 255),
+        Color.WHITE, Color.LIGHTGRAY
     };
 
     @Override
     public void start(Stage primaryStage) {
         BorderPane root = new BorderPane();
         
-        // Create input controls
+        // Create input controls at top
         HBox inputControls = new HBox(10);
         fileNameField = new TextField();
         fileNameField.setPromptText("Enter test case filename");
@@ -74,38 +75,28 @@ public class Main extends Application {
         loadingIndicator.setVisible(false);
         inputControls.getChildren().addAll(fileNameField, loadButton, loadingIndicator);
         inputControls.setPadding(new Insets(10));
+        inputControls.setAlignment(Pos.CENTER);
 
-        // Create button controls with initial invisible state
-        buttonControls = new HBox(10); // Assign to class field
+        // Create button controls
+        buttonControls = new HBox(10);
         Button saveButton = new Button("Save Solution");
+        saveButton.setOnAction(e -> showSaveOptions());
         Button resetViewButton = new Button("Reset View");
+        resetViewButton.setOnAction(e -> resetView());
         buttonControls.getChildren().addAll(saveButton, resetViewButton);
         buttonControls.setPadding(new Insets(10));
-        buttonControls.setVisible(false); // Hide initially
-
-        // Add controls to top section
-        VBox topControls = new VBox(10);
-        topControls.getChildren().addAll(inputControls, buttonControls);
-        topControls.setPadding(new Insets(10));
-        root.setTop(topControls);
-
-        // Create status container
-        VBox statusContainer = new VBox(5);
-        statusLabel = new Label("Enter a filename to start");
-        timeLabel = new Label();
-        iterationsLabel = new Label();
-        statusContainer.getChildren().addAll(statusLabel, timeLabel, iterationsLabel);
-        statusContainer.setPadding(new Insets(10));
+        buttonControls.setVisible(false);
+        buttonControls.setAlignment(Pos.CENTER);
 
         // Create 3D scene container
         SubScene puzzleScene = createPuzzleScene();
-        
-        // Create center content with proper layout
-        VBox centerContent = new VBox(10);
-        centerContent.setAlignment(Pos.CENTER);
-        centerContent.getChildren().addAll(puzzleScene, statusContainer); // Add children only once
-        centerContent.setPadding(new Insets(10));
-        root.setCenter(centerContent);
+
+        // Layout setup
+        VBox topContent = new VBox(10);
+        topContent.getChildren().addAll(inputControls, buttonControls);
+        topContent.setAlignment(Pos.CENTER);
+        root.setTop(topContent);
+        root.setCenter(puzzleScene);
 
         // Add mouse control for rotation
         puzzleScene.setOnMousePressed(me -> {
@@ -129,8 +120,6 @@ public class Main extends Application {
                 if (!filename.isEmpty()) {
                     loadingIndicator.setVisible(true);
                     statusLabel.setText("Solving puzzle...");
-                    
-                    // Run solver in background thread
                     Thread solverThread = new Thread(() -> solvePuzzle(filename));
                     solverThread.start();
                 }
@@ -140,15 +129,8 @@ public class Main extends Application {
             }
         });
 
-        saveButton.setOnAction(e -> saveSolution());
-        resetViewButton.setOnAction(e -> resetView());
-
-        // Layout setup
-        root.setTop(inputControls);
-        root.setCenter(centerContent);
-
         // Scene setup
-        Scene scene = new Scene(root, 800, 700);
+        Scene scene = new Scene(root, 1000, 800);
         primaryStage.setTitle("IQ Puzzler Pro Solver");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -160,8 +142,78 @@ public class Main extends Application {
         });
     }
 
+    // Update showSaveOptions() method:
+    private void showSaveOptions() {
+        if (currentBoard == null) {
+            showError("No solution to save!");
+            return;
+        }
+
+        // Create dialog
+        Stage saveDialog = new Stage();
+        saveDialog.setTitle("Save Solution");
+        saveDialog.initModality(Modality.APPLICATION_MODAL);
+
+        VBox dialogVbox = new VBox(10);
+        dialogVbox.setPadding(new Insets(10));
+        dialogVbox.setAlignment(Pos.CENTER);
+
+        Button txtButton = new Button("Save as TXT");
+        Button imgButton = new Button("Save as PNG");
+
+        txtButton.setOnAction(e -> {
+            saveAsTxt();
+            saveDialog.close();
+        });
+
+        imgButton.setOnAction(e -> {
+            saveAsImage();
+            saveDialog.close();
+        });
+
+        dialogVbox.getChildren().addAll(txtButton, imgButton);
+
+        Scene dialogScene = new Scene(dialogVbox, 200, 100);
+        saveDialog.setScene(dialogScene);
+        saveDialog.show();
+    }
+
+    private void saveAsTxt() {
+        try {
+            String txtPath = "test/output/txt/" + fileNameField.getText().replace(".txt", "") + ".txt";
+            new File(txtPath).getParentFile().mkdirs();
+            Writer writer = new Writer(txtPath);
+            writer.writeSolution(currentBoard, solveTime, iterationCount);
+            System.out.println("\nSolution saved as text file: " + txtPath);
+            showInfo("Text solution saved successfully!");
+        } catch (Exception e) {
+            System.out.println("\nError saving text solution: " + e.getMessage());
+            showError("Error saving text solution: " + e.getMessage());
+        }
+    }
+
+    private void saveAsImage() {
+        try {
+            resetView();
+            String imgPath = "test/output/png/" + fileNameField.getText().replace(".txt", "") + ".png";
+            new File(imgPath).getParentFile().mkdirs();
+            
+            SubScene subScene = (SubScene) puzzleGroup.getScene().getRoot().lookup("#puzzleSubScene");
+            WritableImage image = subScene.snapshot(null, null);
+            File file = new File(imgPath);
+            ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file);
+            
+            System.out.println("\nSolution saved as image: " + imgPath);
+            showInfo("Image saved successfully!");
+        } catch (Exception e) {
+            System.out.println("\nError saving image: " + e.getMessage());
+            showError("Error saving image: " + e.getMessage());
+        }
+    }
+
     private SubScene createPuzzleScene() {
         puzzleGroup = new Group();
+        puzzleGroup.getTransforms().addAll(rotateX, rotateY, scaleTransform);
         
         // Create 3D scene
         Group root3D = new Group();
@@ -171,37 +223,98 @@ public class Main extends Application {
         light1.setTranslateZ(-1000);
         light1.setTranslateX(500);
         light1.setTranslateY(-500);
-
+    
         PointLight light2 = new PointLight(Color.WHITE);
         light2.setTranslateZ(-1000);
         light2.setTranslateX(-500);
         light2.setTranslateY(500);
+    
+        // Initialize containers
+        fileNameContainer = new VBox(5);
+        statusLabel.setTextFill(Color.WHITE);
+        fileNameContainer.getChildren().add(statusLabel);
+        fileNameContainer.setPadding(new Insets(20));
+        fileNameContainer.setVisible(true);
 
-        root3D.getChildren().addAll(puzzleGroup, ambient, light1, light2);
-        puzzleGroup.getTransforms().addAll(rotateX, rotateY);
+        solutionContainer = new VBox(5);
+        timeLabel.setTextFill(Color.WHITE);
+        iterationsLabel.setTextFill(Color.WHITE);
+        solutionContainer.getChildren().addAll(timeLabel, iterationsLabel);
+        solutionContainer.setPadding(new Insets(20));
+        solutionContainer.setVisible(false);
 
-        // Create subscene
-        SubScene subScene = new SubScene(root3D, 600, 500, true, SceneAntialiasing.BALANCED);
+        Label solutionFoundLabel = new Label("Solution found!");
+        solutionFoundLabel.setTextFill(Color.WHITE);
+        solutionFoundGroup = new Group(solutionFoundLabel);
+        solutionFoundGroup.setVisible(false);
+
+        // Create separate Groups for positioning
+        Group fileNameGroup = new Group(fileNameContainer);
+        Group solutionStatsGroup = new Group(solutionContainer);
+
+        // Position each text group independently
+        fileNameGroup.setTranslateX(-85);
+        fileNameGroup.setTranslateY(-25);
+
+        solutionFoundGroup.setTranslateX(-45);
+        solutionFoundGroup.setTranslateY(-200);
+
+        solutionStatsGroup.setTranslateX(50);
+        solutionStatsGroup.setTranslateY(125);
+
+        // Add everything to root3D
+        root3D.getChildren().addAll(
+            puzzleGroup, 
+            ambient, 
+            light1, 
+            light2, 
+            fileNameGroup,
+            solutionFoundGroup,
+            solutionStatsGroup
+        );
+        
+        // Create larger subscene with black background
+        SubScene subScene = new SubScene(root3D, 1000, 700, true, SceneAntialiasing.BALANCED);
+        subScene.setId("puzzleSubScene");
         subScene.setFill(Color.rgb(30, 30, 30));
-
+        
         // Setup camera
         PerspectiveCamera camera = new PerspectiveCamera(true);
         camera.setTranslateZ(-800);
-        camera.setTranslateY(0); // Changed from -200 to center view
+        camera.setTranslateY(0);
+        camera.setTranslateX(0);
         camera.setNearClip(0.1);
         camera.setFarClip(2000.0);
-        camera.setFieldOfView(35);
+        camera.setFieldOfView(30);
+    
         subScene.setCamera(camera);
-
-        // Initial rotation to show balls
-        rotateX.setAngle(180); // Flip to show balls
-        rotateY.setAngle(0);
-
+    
+        // Add zoom control
+        subScene.setOnScroll(event -> {
+            double delta = event.getDeltaY() * 0.002;
+            scaleValue = Math.max(0.5, Math.min(2.0, scaleValue + delta));
+            scaleTransform.setX(scaleValue);
+            scaleTransform.setY(scaleValue);
+            scaleTransform.setZ(scaleValue);
+            event.consume();
+        });
+    
         return subScene;
     }
 
     private void solvePuzzle(String filename) {
         try {
+            // Clear previous puzzle display first
+            Platform.runLater(() -> {
+                puzzleGroup.getChildren().clear();
+                buttonControls.setVisible(false);
+                fileNameContainer.setVisible(true);
+                solutionFoundGroup.setVisible(false);
+                solutionContainer.setVisible(false);
+                loadingIndicator.setVisible(true);
+                statusLabel.setText("Solving puzzle...");
+            });
+    
             // Process filename
             final String inputPath = filename.contains("test/input/") ? 
                 filename : "test/input/" + filename;
@@ -212,11 +325,23 @@ public class Main extends Application {
             File file = new File(fullPath);
             if (!file.exists()) {
                 Platform.runLater(() -> {
-                    showError("File not found: " + fullPath); // Now using final variable
+                    statusLabel.setText("File not found: " + fullPath);
+                    fileNameContainer.setVisible(true);
+                    solutionFoundGroup.setVisible(false);
+                    solutionContainer.setVisible(false);
                     loadingIndicator.setVisible(false);
                 });
                 return;
             }
+    
+            // When starting to solve
+            Platform.runLater(() -> {
+                currentBoard = null;
+                statusLabel.setText("Solving puzzle...");
+                fileNameContainer.setVisible(true);
+                solutionFoundGroup.setVisible(false);
+                solutionContainer.setVisible(false);
+            });
     
             // Read and solve puzzle
             Reader reader = new Reader(fullPath);
@@ -233,34 +358,43 @@ public class Main extends Application {
             boolean hasSolution = solver.solve();
             long endTime = System.currentTimeMillis();
             final long duration = endTime - startTime;
-    
+            finalIterations = solver.getIterations();
+
             if (hasSolution) {
-                currentBoard = solver.getBoard();
-                final Board finalBoard = solver.getBoard();
-                final long finalIterations = solver.getIterations();
+                currentBoard = solver.getBoard(); // Add this line to set currentBoard
+                System.out.println("\nSolution found!");
+                System.out.println("\nPuzzle solution:");
+                Writer.printColoredSolution(currentBoard);
+                System.out.printf("\nWaktu pencarian: %d ms\n", duration);
+                System.out.printf("Banyak kasus yang ditinjau: %d\n", finalIterations);
                 
-                // Update GUI
                 Platform.runLater(() -> {
+                    fileNameContainer.setVisible(false);
+                    solutionFoundGroup.setVisible(true);
+                    solutionContainer.setVisible(true);
                     displayPuzzle();
                     updateStatus(duration, finalIterations);
                     loadingIndicator.setVisible(false);
                 });
-                
-                // Print in CLI
-                Writer.printColoredSolution(finalBoard);
-                System.out.printf("\nWaktu pencarian: %d ms\n", duration);
-                System.out.printf("Banyak kasus yang ditinjau: %d\n", finalIterations);
             } else {
+                System.out.println("\nNo solution found!");
                 Platform.runLater(() -> {
-                    showError("No solution found!");
+                    statusLabel.setText("No solution found!");
+                    fileNameContainer.setVisible(true);
+                    solutionFoundGroup.setVisible(false);
+                    solutionContainer.setVisible(false);
                     loadingIndicator.setVisible(false);
                 });
             }
         } catch (Exception e) {
-            final String errorMessage = e.getMessage();
+            System.out.println("\nError: " + e.getMessage());
             Platform.runLater(() -> {
-                showError("Error: " + errorMessage);
+                statusLabel.setText("Error: " + e.getMessage());
+                fileNameContainer.setVisible(true);
+                solutionFoundGroup.setVisible(false);
+                solutionContainer.setVisible(false);
                 loadingIndicator.setVisible(false);
+                buttonControls.setVisible(false);
             });
         }
     }
@@ -271,44 +405,84 @@ public class Main extends Application {
         
         if (currentBoard == null) return;
         
-        // Show button controls directly using the class field
-        Platform.runLater(() -> {
-            buttonControls.setVisible(true);
-        });
-        
         char[][] grid = currentBoard.getGrid();
         double spacing = SPHERE_RADIUS * 2.5;
 
-        // Create board with adjusted position
+        // Create board components with updated offsets
+        double xOffset = 25.0; 
+        double yOffset = 15.0;
+
+        // Create and add board group
+        Group boardGroup = createBoardGroup(grid, spacing, xOffset, yOffset);
+        puzzleGroup.getChildren().add(boardGroup);
+
+        // Create and add spheres with connections
+        Map<Character, List<Sphere>> pieceSpheres = createPieceSpheres(grid, spacing, xOffset, yOffset);
+        createConnections(grid, spacing, pieceSpheres, xOffset, yOffset);
+
+        // Update view
+        resetView();
+        buttonControls.setVisible(true);
+    }
+
+    private Group createBoardGroup(char[][] grid, double spacing, double xOffset, double yOffset) {
         double boardWidth = grid[0].length * spacing * 1.2;
         double boardHeight = grid.length * spacing * 1.2;
         double boardDepth = spacing * 0.5;
         double curveRadius = SPHERE_RADIUS * 1.2;
-        
-        // Create main board with centered position
+
+        // Create main board
         Box mainBoard = new Box(boardWidth, boardHeight, boardDepth);
         PhongMaterial boardMaterial = new PhongMaterial(Color.rgb(40, 40, 40));
         mainBoard.setMaterial(boardMaterial);
-        
-        // Create curved edge with proper alignment
-        Cylinder curve = new Cylinder(curveRadius, boardWidth);
-        curve.setMaterial(boardMaterial);
+        mainBoard.setTranslateZ(-boardDepth/2);
+
+        // Create indentations
+        Group indentations = createIndentations(grid, spacing, xOffset, yOffset);
+
+        // Create curved edge
+        Cylinder curve = createCurvedEdge(curveRadius, boardWidth, boardHeight);
+
+        Group boardGroup = new Group(mainBoard, indentations, curve);
+        boardGroup.setTranslateZ(-spacing * 1.5);
+
+        return boardGroup;
+    }
+
+    private Group createIndentations(char[][] grid, double spacing, double xOffset, double yOffset) {
+        Group indentations = new Group();
+        for (int row = 0; row < grid.length; row++) {
+            for (int col = 0; col < grid[0].length; col++) {
+                if (grid[row][col] != '.') {
+                    double x = (col - grid[0].length/2.0) * spacing + xOffset;
+                    double y = ((grid.length - 1 - row) - grid.length/2.0) * spacing + yOffset;
+                    
+                    Sphere indent = new Sphere(SPHERE_RADIUS * 0.9);
+                    PhongMaterial indentMaterial = new PhongMaterial(Color.rgb(30, 30, 30));
+                    indent.setMaterial(indentMaterial);
+                    indent.setTranslateX(x);
+                    indent.setTranslateY(y);
+                    indent.setTranslateZ(SPHERE_RADIUS/2);
+                    indentations.getChildren().add(indent);
+                }
+            }
+        }
+        return indentations;
+    }
+
+    private Cylinder createCurvedEdge(double radius, double width, double height) {
+        Cylinder curve = new Cylinder(radius, width);
         curve.setRotate(90);
-        curve.setTranslateZ(-boardDepth/2 - curveRadius/2);
-        curve.setTranslateY(boardHeight/2); // Changed to position at bottom
-        
-        // Group and position board components
-        Group boardGroup = new Group(mainBoard, curve);
-        boardGroup.setTranslateX(-boardWidth/2); // Center horizontally
-        boardGroup.setTranslateY(-boardHeight/2); // Center vertically
-        boardGroup.setTranslateZ(-spacing); // Position behind spheres
-        
-        puzzleGroup.getChildren().add(boardGroup);
-        
-        // Map to store spheres of same piece
+        curve.setTranslateY(height/2);
+        curve.setTranslateZ(-radius);
+        PhongMaterial curveMaterial = new PhongMaterial(Color.rgb(50, 50, 50));
+        curve.setMaterial(curveMaterial);
+        return curve;
+    }
+
+    private Map<Character, List<Sphere>> createPieceSpheres(char[][] grid, double spacing, double xOffset, double yOffset) {
         Map<Character, List<Sphere>> pieceSpheres = new HashMap<>();
         
-        // Add spheres for pieces with centered coordinates
         for (int row = grid.length - 1; row >= 0; row--) {
             for (int col = 0; col < grid[0].length; col++) {
                 if (grid[row][col] != '.') {
@@ -319,144 +493,81 @@ public class Main extends Application {
                     material.setSpecularPower(32);
                     sphere.setMaterial(material);
                     
-                    double x = (col - grid[0].length/2.0) * spacing;
-                    double y = ((grid.length - 1 - row) - grid.length/2.0) * spacing;
+                    double x = (col - grid[0].length/2.0) * spacing + xOffset;
+                    double y = ((grid.length - 1 - row) - grid.length/2.0) * spacing + yOffset;
                     sphere.setTranslateX(x);
                     sphere.setTranslateY(y);
-                    sphere.setTranslateZ(SPHERE_RADIUS); // Position just above board
+                    sphere.setTranslateZ(0);
                     
                     puzzleGroup.getChildren().add(sphere);
-                    
-                    // Store sphere for connecting lines
                     pieceSpheres.computeIfAbsent(grid[row][col], k -> new ArrayList<>()).add(sphere);
                 }
             }
         }
-        
-        // In displayPuzzle() method, update the connector creation section
+        return pieceSpheres;
+    }
+
+    private void createConnections(char[][] grid, double spacing, Map<Character, List<Sphere>> pieceSpheres, 
+                                double xOffset, double yOffset) {
         for (int row = 0; row < grid.length; row++) {
             for (int col = 0; col < grid[0].length; col++) {
                 if (grid[row][col] != '.') {
-                    Sphere currentSphere = null;
-                    
-                    // Find the current sphere
-                    for (List<Sphere> sphereList : pieceSpheres.values()) {
-                        for (Sphere s : sphereList) {
-                            double x = (col - grid[0].length/2.0) * spacing;
-                            double y = ((grid.length - 1 - row) - grid.length/2.0) * spacing;
-                            if (Math.abs(s.getTranslateX() - x) < 0.1 && 
-                                Math.abs(s.getTranslateY() - y) < 0.1) {
-                                currentSphere = s;
-                                break;
-                            }
-                        }
-                        if (currentSphere != null) break;
-                    }
-                    
-                    if (currentSphere != null) {
-                        // Check connections in right and down directions only
-                        int[][] directions = {
-                            {0, 1},  // Right
-                            {1, 0}   // Down
-                        };
-                        
-                        for (int[] dir : directions) {
-                            int adjRow = row + dir[0];
-                            int adjCol = col + dir[1];
-                            
-                            // Check if adjacent position has a sphere (any piece)
-                            if (adjRow < grid.length && adjCol < grid[0].length && 
-                                grid[adjRow][adjCol] != '.') {
-                                
-                                // Find adjacent sphere
-                                Sphere adjSphere = null;
-                                double adjX = (adjCol - grid[0].length/2.0) * spacing;
-                                double adjY = ((grid.length - 1 - adjRow) - grid.length/2.0) * spacing;
-                                
-                                // Find matching sphere in correct position
-                                for (List<Sphere> sphereList : pieceSpheres.values()) {
-                                    for (Sphere s : sphereList) {
-                                        if (Math.abs(s.getTranslateX() - adjX) < 0.1 && 
-                                            Math.abs(s.getTranslateY() - adjY) < 0.1) {
-                                            adjSphere = s;
-                                            break;
-                                        }
-                                    }
-                                    if (adjSphere != null) break;
-                                }
-                                
-                                if (adjSphere != null) {
-                                    String connectionKey = Math.min(row, adjRow) + "," + 
-                                                        Math.min(col, adjCol) + "-" + 
-                                                        Math.max(row, adjRow) + "," + 
-                                                        Math.max(col, adjCol);
-                                    
-                                    if (!addedConnections.contains(connectionKey)) {
-                                        // Create connector
-                                        Cylinder connector = new Cylinder(SPHERE_RADIUS * 0.3, spacing);
-                                        PhongMaterial material = new PhongMaterial();
-                                        
-                                        // Use same color if same piece, gray if different
-                                        if (grid[row][col] == grid[adjRow][adjCol]) {
-                                            material.setDiffuseColor(PIECE_COLORS[grid[row][col] - 'A']);
-                                            connector.setMaterial(material);
-
-                                            if (dir[0] == 0) { // Horizontal connection
-                                                connector.getTransforms().add(new Rotate(90, Rotate.Z_AXIS));
-                                                connector.setTranslateX(currentSphere.getTranslateX() + spacing/2);
-                                                connector.setTranslateY(currentSphere.getTranslateY());
-                                            } else { // Vertical connection
-                                                connector.getTransforms().add(new Rotate(0, Rotate.X_AXIS));
-                                                connector.setTranslateX(currentSphere.getTranslateX());
-                                                connector.setTranslateY(currentSphere.getTranslateY() - spacing/2);
-                                            }
-                                            
-                                            connector.setTranslateZ(currentSphere.getTranslateZ());
-                                            puzzleGroup.getChildren().add(connector);
-                                            addedConnections.add(connectionKey);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Check right and down connections
+                    checkAndCreateConnection(grid, row, col, row, col + 1, spacing, pieceSpheres, xOffset, yOffset);
+                    checkAndCreateConnection(grid, row, col, row + 1, col, spacing, pieceSpheres, xOffset, yOffset);
                 }
             }
         }
-
-        resetView();
     }
 
-    private void saveSolution() {
-        if (currentBoard == null) {
-            showError("No solution to save!");
-            return;
-        }
-    
-        try {
-            // Save text solution
-            String txtPath = "output/txt/" + fileNameField.getText().replace(".txt", "") + "_solution.txt";
-            new File(txtPath).getParentFile().mkdirs();
-            Writer writer = new Writer(txtPath);
-            writer.writeSolution(currentBoard, solveTime, iterationCount);
-    
-            // Save image
-            String imgPath = "output/img/" + fileNameField.getText().replace(".txt", "") + "_solution.png";
-            new File(imgPath).getParentFile().mkdirs();
+    private void checkAndCreateConnection(char[][] grid, int row1, int col1, int row2, int col2, 
+                                        double spacing, Map<Character, List<Sphere>> pieceSpheres,
+                                        double xOffset, double yOffset) {
+        if (row2 >= 0 && row2 < grid.length && col2 >= 0 && col2 < grid[0].length &&
+            grid[row1][col1] == grid[row2][col2]) {
             
-            WritableImage image = puzzleGroup.getScene().snapshot(null);
-            File file = new File(imgPath);
-            ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file);
-    
-            showInfo("Solution saved successfully!");
-        } catch (Exception e) {
-            showError("Error saving solution: " + e.getMessage());
+            String connectionKey = String.format("%d,%d-%d,%d", row1, col1, row2, col2);
+            if (!addedConnections.contains(connectionKey)) {
+                createConnection(row1, col1, row2, col2, grid[row1][col1], spacing, xOffset, yOffset);
+                addedConnections.add(connectionKey);
+            }
         }
+    }
+
+    private void createConnection(int row1, int col1, int row2, int col2, char pieceId, 
+                                double spacing, double xOffset, double yOffset) {
+        double x1 = (col1 - currentBoard.getGrid()[0].length/2.0) * spacing + xOffset;
+        double y1 = ((currentBoard.getGrid().length - 1 - row1) - currentBoard.getGrid().length/2.0) * spacing + yOffset;
+        double x2 = (col2 - currentBoard.getGrid()[0].length/2.0) * spacing + xOffset;
+        double y2 = ((currentBoard.getGrid().length - 1 - row2) - currentBoard.getGrid().length/2.0) * spacing + yOffset;
+
+        Cylinder connection = new Cylinder(SPHERE_RADIUS * 0.4, 
+            Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2)));
+        
+        // Position and rotate the connection
+        double angle = Math.toDegrees(Math.atan2(y2-y1, x2-x1));
+        connection.getTransforms().addAll(
+            new Rotate(90, Rotate.Z_AXIS),
+            new Rotate(-angle, Rotate.Z_AXIS)
+        );
+        
+        connection.setTranslateX((x1 + x2)/2);
+        connection.setTranslateY((y1 + y2)/2);
+        
+        PhongMaterial material = new PhongMaterial();
+        material.setDiffuseColor(PIECE_COLORS[pieceId - 'A']);
+        connection.setMaterial(material);
+        
+        puzzleGroup.getChildren().add(connection);
     }
     
     private void resetView() {
         rotateX.setAngle(180);
         rotateY.setAngle(0);
+        scaleValue = 1.0;
+        scaleTransform.setX(scaleValue);
+        scaleTransform.setY(scaleValue);
+        scaleTransform.setZ(scaleValue);
     }
     
     private void showInfo(String message) {
@@ -468,11 +579,18 @@ public class Main extends Application {
     }
 
     private void updateStatus(long duration, long iterations) {
-        this.solveTime = duration;      // Store duration
-        this.iterationCount = iterations; // Store iterations
-        statusLabel.setText("Solution found!");
-        timeLabel.setText(String.format("Time: %d ms", duration));
-        iterationsLabel.setText(String.format("Iterations: %d", iterations));
+        this.solveTime = duration;
+        this.iterationCount = iterations;
+        Platform.runLater(() -> {
+            statusLabel.setText("Solution found!");
+            timeLabel.setText(String.format("Waktu pencarian: %d ms", duration));
+            iterationsLabel.setText(String.format("Banyak kasus yang ditinjau: %d", iterations));
+            
+            // Ensure labels are visible
+            statusLabel.setVisible(true);
+            timeLabel.setVisible(true);
+            iterationsLabel.setVisible(true);
+        });
     }
 
     private void showError(String message) {

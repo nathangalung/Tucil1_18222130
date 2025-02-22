@@ -6,7 +6,7 @@ public class Board {
     private char[][] grid;
     private char[][] customConfig;
     private boolean isCustomMode;
-    private String puzzleType; // Add this field
+    private String puzzleType;
 
     public Board(int rows, int cols, char[][] customConfig, String puzzleType) {
         this.rows = rows;
@@ -14,20 +14,10 @@ public class Board {
         this.customConfig = customConfig;
         this.isCustomMode = (customConfig != null);
         this.puzzleType = puzzleType;
-        
-        if (puzzleType.equals("PYRAMID")) {
-            // For pyramid, we need separate grids for each layer
-            int totalRows = 0;
-            for (int i = 1; i <= rows; i++) {
-                totalRows += i; // Layer 1: 1 row, Layer 2: 2 rows, Layer 3: 3 rows, etc.
-            }
-            this.grid = new char[totalRows][cols];
-        } else {
-            this.grid = new char[rows][cols];
-        }
+        this.grid = new char[rows][cols];
         
         // Initialize grid with empty spaces
-        for (int i = 0; i < grid.length; i++) {
+        for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 grid[i][j] = '.';
             }
@@ -81,47 +71,6 @@ public class Board {
                 }
             }
             return touchesX;
-        }
-        // For PYRAMID mode
-        else if (puzzleType.equals("PYRAMID")) {
-            // Get current layer
-            int layer = 0;
-            int totalRows = 0;
-            while (totalRows <= row) {
-                totalRows += getRows() - layer;
-                layer++;
-            }
-            layer--;
-
-            // Current layer size
-            int layerSize = getRows() - layer;
-
-            // Check block placement
-            for (int[] coord : block.getCoordinates()) {
-                int newRow = row + coord[0];
-                int newCol = col + coord[1];
-
-                // Check bounds and overlap
-                if (newRow < 0 || newRow >= grid.length || 
-                    newCol < 0 || newCol >= layerSize || 
-                    grid[newRow][newCol] != '.') {
-                    return false;
-                }
-
-                // Verify block stays within layer
-                int blockLayer = 0;
-                int blockRowCount = 0;
-                while (blockRowCount <= newRow) {
-                    blockRowCount += getRows() - blockLayer;
-                    blockLayer++;
-                }
-                blockLayer--;
-
-                if (blockLayer != layer) {
-                    return false;
-                }
-            }
-            return true;
         }
         // Default case - cannot place block
         return false;
