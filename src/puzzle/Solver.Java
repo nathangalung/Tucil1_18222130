@@ -1,7 +1,7 @@
 package puzzle;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Solver {
     private Board board;
@@ -10,6 +10,10 @@ public class Solver {
     private boolean solved;
     private char[][] customConfig;
     private String puzzleType;
+    private static final int NO_SOLUTION = 0;
+    private static final int PUZZLE_BIGGER = 1;
+    private static final int BOARD_BIGGER = 2;
+    private int solutionStatus = NO_SOLUTION;
 
     public Solver(int rows, int cols, List<Block> blocks, char[][] customConfig, String puzzleType) {
         this.puzzleType = puzzleType;
@@ -40,9 +44,20 @@ public class Solver {
     private boolean solveDefault(int blockIndex) {
         iterations++;
 
+        // Case 1: All blocks placed but board not full
         if (blockIndex >= blocks.size()) {
+            if (!isBoardComplete()) {
+                solutionStatus = BOARD_BIGGER;
+                return false;
+            }
             solved = true;
             return true;
+        }
+
+        // Case 2: Board full but blocks remain
+        if (isBoardComplete() && blockIndex < blocks.size()) {
+            solutionStatus = PUZZLE_BIGGER;
+            return false;
         }
 
         Block currentBlock = blocks.get(blockIndex).copy();
@@ -83,13 +98,33 @@ public class Solver {
     private boolean solveCustom(int blockIndex) {
         iterations++;
     
-        if (isCustomConfigFilled()) {
-            solved = true;
-            return true;
+        if (blockIndex == 0) {
+            int totalPieceSize = 0;
+            for (Block block : blocks) {
+                totalPieceSize += block.getCoordinates().size();
+            }
+            
+            int totalXPositions = 0;
+            for (int i = 0; i < board.getRows(); i++) {
+                for (int j = 0; j < board.getCols(); j++) {
+                    if (customConfig[i][j] == 'X') {
+                        totalXPositions++;
+                    }
+                }
+            }
+            
+            if (totalPieceSize > totalXPositions) {
+                solutionStatus = PUZZLE_BIGGER;
+                return false;
+            }
         }
     
         if (blockIndex >= blocks.size()) {
-            return false;
+            if (!isCustomConfigFilled()) {
+                return false;
+            }
+            solved = true;
+            return true;
         }
     
         Block currentBlock = blocks.get(blockIndex).copy();
@@ -98,25 +133,63 @@ public class Solver {
     
         for (int row = 0; row <= maxRow; row++) {
             for (int col = 0; col <= maxCol; col++) {
-                Block tryBlock = currentBlock.copy();
-                
-                for (int rotation = 0; rotation < 4; rotation++) {
-                    for (int flip = 0; flip < 2; flip++) {
-                        if (board.canPlace(tryBlock, row, col)) {
-                            board.place(tryBlock, row, col);
-                            if (solveCustom(blockIndex + 1)) {
-                                return true;
-                            }
-                            board.remove(tryBlock, row, col);
-                        }
-                        tryBlock.flipHorizontal();
+                // Try original orientation
+                if (board.canPlace(currentBlock, row, col)) {
+                    board.place(currentBlock, row, col);
+                    if (solveCustom(blockIndex + 1)) {
+                        return true;
                     }
-                    tryBlock.rotate90();
+                    board.remove(currentBlock, row, col);
+                }
+                
+                // Try flipped orientation
+                currentBlock.flipHorizontal();
+                if (board.canPlace(currentBlock, row, col)) {
+                    board.place(currentBlock, row, col);
+                    if (solveCustom(blockIndex + 1)) {
+                        return true;
+                    }
+                    board.remove(currentBlock, row, col);
+                }
+                currentBlock.flipHorizontal();
+                
+                // Try rotations
+                for (int i = 0; i < 3; i++) {
+                    currentBlock.rotate90();
+                    if (board.canPlace(currentBlock, row, col)) {
+                        board.place(currentBlock, row, col);
+                        if (solveCustom(blockIndex + 1)) {
+                            return true;
+                        }
+                        board.remove(currentBlock, row, col);
+                    }
+                    
+                    // Try flipped rotation
+                    currentBlock.flipHorizontal();
+                    if (board.canPlace(currentBlock, row, col)) {
+                        board.place(currentBlock, row, col);
+                        if (solveCustom(blockIndex + 1)) {
+                            return true;
+                        }
+                        board.remove(currentBlock, row, col);
+                    }
+                    currentBlock.flipHorizontal();
                 }
             }
         }
-    
-        return solveCustom(blockIndex + 1);
+        return false;
+    }
+
+    private boolean isBoardComplete() {
+        char[][] grid = board.getGrid();
+        for (int i = 0; i < board.getRows(); i++) {
+            for (int j = 0; j < board.getCols(); j++) {
+                if (grid[i][j] == '.') {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private List<Block> sortBlocksBySize(List<Block> blocks) {
@@ -162,5 +235,9 @@ public class Solver {
 
     public boolean isSolved() {
         return solved;
+    }
+
+    public int getSolutionStatus() {
+        return solutionStatus;
     }
 }

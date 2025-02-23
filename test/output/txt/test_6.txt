@@ -1,0 +1,9 @@
+BBBBC
+B...C
+FFCCC
+D...A
+DDDDE
+
+Solution found!
+Search duration: 18 ms
+Number of iterations: 144186

@@ -4,5 +4,5 @@ FJIEEAAHGDD
 FJJEEAHHGDD
 LLLLEAAHGGG
 
-Waktu pencarian: 15012 ms
-Banyak kasus yang ditinjau: 2968468
+Search duration: 15466 ms
+Number of iterations: 2968468

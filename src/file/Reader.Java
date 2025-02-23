@@ -32,7 +32,7 @@ public class Reader {
         if (puzzleType == null) {
             File file = new File(filename);
             Scanner scanner = new Scanner(file);
-            scanner.nextLine(); // Skip dimensions
+            scanner.nextLine();
             puzzleType = scanner.nextLine();
             scanner.close();
         }
@@ -46,8 +46,8 @@ public class Reader {
 
         File file = new File(filename);
         Scanner scanner = new Scanner(file);
-        scanner.nextLine(); // Skip dimensions
-        scanner.nextLine(); // Skip puzzle type
+        scanner.nextLine();
+        scanner.nextLine();
         
         char[][] config = new char[rows][cols];
         for (int i = 0; i < rows; i++) {
@@ -63,10 +63,9 @@ public class Reader {
     public ArrayList<Block> readBlocks() throws FileNotFoundException {
         File file = new File(filename);
         Scanner scanner = new Scanner(file);
-        scanner.nextLine(); // Skip dimensions
-        scanner.nextLine(); // Skip puzzle type
-        
-        // Skip custom configuration if needed
+        scanner.nextLine();
+        scanner.nextLine();
+
         if (puzzleType.equals("CUSTOM")) {
             for (int i = 0; i < rows; i++) {
                 scanner.nextLine();

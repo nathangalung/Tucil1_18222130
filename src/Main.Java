@@ -46,6 +46,7 @@ public class Main extends Application {
     private Label statusLabel = new Label("Enter a filename to start");
     private Label timeLabel = new Label();
     private Label iterationsLabel = new Label();
+    private Label solutionFoundLabel = new Label("Solution found!");
     private VBox fileNameContainer;
     private VBox solutionContainer;
     private Group solutionFoundGroup;
@@ -194,8 +195,9 @@ public class Main extends Application {
             String txtPath = "test/output/txt/" + fileNameField.getText().replace(".txt", "") + ".txt";
             new File(txtPath).getParentFile().mkdirs();
             Writer writer = new Writer(txtPath);
-            writer.writeSolution(currentBoard, solveTime, iterationCount);
-            System.out.println("\nSolution saved as text file: " + txtPath);
+            String message = statusLabel.getText(); // Get the current status message
+            writer.writeSolution(currentBoard, solveTime, iterationCount, message);
+            System.out.println("\nAttempted solution saved as text file: " + txtPath);
             showInfo("Text solution saved successfully!");
         } catch (Exception e) {
             System.out.println("\nError saving text solution: " + e.getMessage());
@@ -254,7 +256,6 @@ public class Main extends Application {
         solutionContainer.setPadding(new Insets(20));
         solutionContainer.setVisible(false);
 
-        Label solutionFoundLabel = new Label("Solution found!");
         solutionFoundLabel.setTextFill(Color.WHITE);
         solutionFoundGroup = new Group(solutionFoundLabel);
         solutionFoundGroup.setVisible(false);
@@ -354,59 +355,105 @@ public class Main extends Application {
                 solutionContainer.setVisible(false);
             });
     
-            // Read and solve puzzle
-            Reader reader = new Reader(fullPath);
-            int[] dimensions = reader.readDimensions();
-            String puzzleType = reader.readPuzzleType();
-            char[][] customConfig = null;
-            if (puzzleType.equals("CUSTOM")) {
-                customConfig = reader.readCustomConfig();
-            }
-            ArrayList<Block> blocks = reader.readBlocks();
+            try {
+                Reader reader = new Reader(fullPath);
+                int[] dimensions = reader.readDimensions();
+                String puzzleType = reader.readPuzzleType();
+                char[][] customConfig = null;
+                if (puzzleType.equals("CUSTOM")) {
+                    customConfig = reader.readCustomConfig();
+                }
+                ArrayList<Block> blocks = reader.readBlocks();
     
-            long startTime = System.currentTimeMillis();
-            Solver solver = new Solver(dimensions[0], dimensions[1], blocks, customConfig, puzzleType);
-            boolean hasSolution = solver.solve();
-            long endTime = System.currentTimeMillis();
-            final long duration = endTime - startTime;
-            finalIterations = solver.getIterations();
+                if (blocks.isEmpty() || dimensions[2] != blocks.size()) {
+                    throw new IllegalArgumentException("Invalid file structure: Incomplete or malformed puzzle definition");
+                }
+    
+                // Solve puzzle
+                long startTime = System.currentTimeMillis();
+                Solver solver = new Solver(dimensions[0], dimensions[1], blocks, customConfig, puzzleType);
+                boolean hasSolution = solver.solve();
+                long endTime = System.currentTimeMillis();
+                final long duration = endTime - startTime;
+                finalIterations = solver.getIterations();
 
-            if (hasSolution) {
-                currentBoard = solver.getBoard(); // Add this line to set currentBoard
-                System.out.println("\nSolution found!");
-                System.out.println("\nPuzzle solution:");
-                Writer.printColoredSolution(currentBoard);
-                System.out.printf("\nWaktu pencarian: %d ms\n", duration);
-                System.out.printf("Banyak kasus yang ditinjau: %d\n", finalIterations);
-                
+                if (hasSolution) {
+                    currentBoard = solver.getBoard();
+                    System.out.println("\nSolution found!");
+                    System.out.println("\nPuzzle solution:");
+                    Writer.printColoredSolution(currentBoard);
+                    System.out.printf("\nSearch duration: %d ms\n", duration);
+                    System.out.printf("Number of iterations: %d\n", finalIterations);
+                    
+                    Platform.runLater(() -> {
+                        statusLabel.setText("Solution found!");
+                        solutionFoundLabel.setText("Solution found!");
+                        fileNameContainer.setVisible(false);
+                        solutionFoundGroup.setVisible(true);
+                        solutionContainer.setVisible(true);
+                        displayPuzzle();
+                        updateStatus(duration, finalIterations);
+                        loadingIndicator.setVisible(false);
+                        buttonControls.setVisible(true);
+                    });
+                } else {
+                    String message;
+                    switch (solver.getSolutionStatus()) {
+                        case 1: // PUZZLE_BIGGER
+                            message = "No solution found: Puzzle pieces > Board space!";
+                            break;
+                        case 2: // BOARD_BIGGER
+                            message = "No solution found: Puzzle pieces < Board space!";
+                            break;
+                        default:
+                            message = "No solution found: Cannot fit pieces perfectly!";
+                    }
+        
+                    currentBoard = solver.getBoard();
+                    final String finalMessage = message;
+                    
+                    Platform.runLater(() -> {
+                        statusLabel.setText(finalMessage);
+                        switch (solver.getSolutionStatus()) {
+                            case 1: // PUZZLE_BIGGER
+                                solutionFoundLabel.setText("No solution found: Puzzle > Board!");
+                                break;
+                            case 2: // BOARD_BIGGER
+                                solutionFoundLabel.setText("No solution found: Puzzle < Board!");
+                                break;
+                            default:
+                                solutionFoundLabel.setText("No solution found: Cannot fit perfectly!");
+                        }
+                        fileNameContainer.setVisible(false);
+                        solutionFoundGroup.setVisible(true);
+                        solutionContainer.setVisible(true);
+                        displayPuzzle();
+                        updateStatus(duration, finalIterations);
+                        loadingIndicator.setVisible(false);
+                        buttonControls.setVisible(true);
+                    });
+                    
+                    System.out.println("\n" + message);
+                }
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
                 Platform.runLater(() -> {
-                    fileNameContainer.setVisible(false);
-                    solutionFoundGroup.setVisible(true);
-                    solutionContainer.setVisible(true);
-                    displayPuzzle();
-                    updateStatus(duration, finalIterations);
-                    loadingIndicator.setVisible(false);
-                });
-            } else {
-                System.out.println("\nNo solution found!");
-                Platform.runLater(() -> {
-                    statusLabel.setText("No solution found!");
+                    statusLabel.setText("Invalid file structure");
                     fileNameContainer.setVisible(true);
                     solutionFoundGroup.setVisible(false);
                     solutionContainer.setVisible(false);
                     loadingIndicator.setVisible(false);
                 });
+                System.out.println("\nInvalid file structure");
             }
         } catch (Exception e) {
-            System.out.println("\nError: " + e.getMessage());
             Platform.runLater(() -> {
                 statusLabel.setText("Error: " + e.getMessage());
                 fileNameContainer.setVisible(true);
                 solutionFoundGroup.setVisible(false);
                 solutionContainer.setVisible(false);
                 loadingIndicator.setVisible(false);
-                buttonControls.setVisible(false);
             });
+            System.out.println("\nError: " + e.getMessage());
         }
     }
 
@@ -593,9 +640,8 @@ public class Main extends Application {
         this.solveTime = duration;
         this.iterationCount = iterations;
         Platform.runLater(() -> {
-            statusLabel.setText("Solution found!");
-            timeLabel.setText(String.format("Waktu pencarian: %d ms", duration));
-            iterationsLabel.setText(String.format("Banyak kasus yang ditinjau: %d", iterations));
+            timeLabel.setText(String.format("Search duration: %d ms", duration));
+            iterationsLabel.setText(String.format("Number of iterations: %d", iterations));
             
             // Ensure labels are visible
             statusLabel.setVisible(true);

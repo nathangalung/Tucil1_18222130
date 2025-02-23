@@ -1,0 +1,6 @@
+..
+..
+
+No solution found: Puzzle pieces > Board space!
+Search duration: 0 ms
+Number of iterations: 21

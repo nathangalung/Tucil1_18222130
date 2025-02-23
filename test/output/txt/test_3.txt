@@ -1,0 +1,9 @@
+AGGGGCCJJI
+AGGEHCFJII
+AAEEHCFJJI
+AABEHCFFDD
+BBBEHHFDDD
+
+Solution found!
+Search duration: 12 ms
+Number of iterations: 1157

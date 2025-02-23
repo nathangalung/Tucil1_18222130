@@ -1,0 +1,7 @@
+AAB
+.A.
+CCC
+
+Solution found!
+Search duration: 4 ms
+Number of iterations: 211

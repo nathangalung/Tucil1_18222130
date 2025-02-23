@@ -43,7 +43,7 @@ public class Writer {
         this.outputPath = inputPath.replace("input", "output/txt");
     }
     
-    public void writeSolution(Board board, long timeMs, long iterations) throws IOException {
+    public void writeSolution(Board board, long timeMs, long iterations, String message) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
             char[][] grid = board.getGrid();
             
@@ -51,14 +51,16 @@ public class Writer {
             for (char[] row : grid) {
                 writer.println(new String(row));
             }
-            writer.printf("\nWaktu pencarian: %d ms\n", timeMs);
-            writer.printf("Banyak kasus yang ditinjau: %d\n", iterations);
+            writer.println("\n" + message);
+            writer.printf("Search duration: %d ms\n", timeMs);
+            writer.printf("Number of iterations: %d\n", iterations);
             
             // Print to console with colors
-            System.out.println("\nSolution:");
+            System.out.println("\nAttempted solution:");
             printColoredSolution(board);
-            System.out.printf("\nWaktu pencarian: %d ms\n", timeMs);
-            System.out.printf("Banyak kasus yang ditinjau: %d\n", iterations);
+            System.out.println("\n" + message);
+            System.out.printf("Search duration: %d ms\n", timeMs);
+            System.out.printf("Number of iterations: %d\n", iterations);
         }
     }
     
