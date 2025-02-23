@@ -2,7 +2,7 @@ module puzzlesolver {
     requires javafx.controls;
     requires javafx.graphics;
     requires javafx.base;
-    requires javafx.swing;  // Add this line
+    requires javafx.swing;
     requires java.desktop;
     
     exports main;

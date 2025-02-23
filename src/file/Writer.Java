@@ -64,7 +64,7 @@ public class Writer {
     
     public static void printColoredSolution(Board board) {
         char[][] grid = board.getGrid();
-        System.out.println(); // Add blank line before solution
+        System.out.println();
         for (char[] row : grid) {
             for (char c : row) {
                 if (c == '.') {
