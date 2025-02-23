@@ -4,5 +4,5 @@ EBAAC
 DBBCC
 DDGGG
 
-Waktu pencarian: 58 ms
+Waktu pencarian: 34 ms
 Banyak kasus yang ditinjau: 3832

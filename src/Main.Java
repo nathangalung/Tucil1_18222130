@@ -23,6 +23,17 @@ import file.*;
 import puzzle.*;
 
 public class Main extends Application {
+    static {
+        // Environment properties for WSL
+        System.setProperty("prism.order", "sw");
+        System.setProperty("prism.text", "t2k");
+        System.setProperty("prism.forceGPU", "false");
+        System.setProperty("glass.platform", "gtk");
+        System.setProperty("javafx.platform", "gtk");
+        System.setProperty("embedded", "false");
+        System.setProperty("java.awt.headless", "false");
+        System.setProperty("DISPLAY", ":0");
+    }
     // Constants
     private static final double SPHERE_RADIUS = 20.0;
     
